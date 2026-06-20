@@ -1,0 +1,26 @@
+# Variables privadas
+.env
+
+# Entornos virtuales
+venv/
+.venv/
+
+# VSCode
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+
+# Fotos de personas
+personas/
+
+# Capturas
+snapshots/
+
+# Bases de datos
+*.db
+
+# Windows
+Thumbs.db
+Desktop.ini
