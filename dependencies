@@ -1,119 +1,289 @@
-Si vas a montar exactamente el mismo proyecto en otro PC (Python 3.12, OpenCV, reconocimiento facial y PostgreSQL), estos son los comandos que utilizaste.
+import cv2
+import face_recognition
+import numpy as np
+import threading
 
-## 1. Actualizar pip
+from datetime import datetime, timedelta
 
-```powershell
-python -m pip install --upgrade pip
-```
+from db import conectar
+from personas import cargar_personas
+from rtsp_camera import abrir_camara
+from config import *
 
----
 
-## 2. Instalar setuptools compatible
+# ==================================
+# CONEXION POSTGRESQL
+# ==================================
 
-(Importante porque `face_recognition_models` usa `pkg_resources`)
+try:
 
-```powershell
-pip install setuptools==80.9.0
-```
+    conn = conectar()
 
----
+    cursor = conn.cursor()
 
-## 3. Instalar NumPy compatible con dlib
+    print("Conectado a PostgreSQL")
 
-```powershell
-pip install numpy==1.26.4
-```
+except Exception as e:
 
----
+    print("Error PostgreSQL:", e)
 
-## 4. Instalar OpenCV compatible
+    exit()
 
-La versión nueva pide NumPy 2.x, así que instala una versión compatible:
 
-```powershell
-pip install opencv-python==4.9.0.80
-```
+# ==================================
+# CARGAR PERSONAS
+# ==================================
 
----
+caras_conocidas, nombres = cargar_personas()
 
-## 5. Instalar dlib
 
-Descarga primero el archivo:
+# ==================================
+# CONTROL DE DUPLICADOS
+# ==================================
 
-```
-dlib-19.24.99-cp312-cp312-win_amd64.whl
-```
+ultimas_detecciones = {}
 
-y luego:
 
-```powershell
-cd C:\Users\TU_USUARIO\Downloads
+# ==================================
+# CAMARA
+# ==================================
 
-python -m pip install dlib-19.24.99-cp312-cp312-win_amd64.whl
-```
+cap = abrir_camara(RTSP_URL)
 
----
+if cap is None:
 
-## 6. Instalar face_recognition
+    print("No se pudo abrir la camara")
 
-```powershell
-pip install face-recognition
-```
+    exit()
 
----
+cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
-## 7. Instalar PostgreSQL para Python
+print("Camara conectada")
 
-```powershell
-pip install psycopg2-binary
-```
 
----
+# ==================================
+# HILO DE CAPTURA
+# ==================================
 
-## 8. Verificar las instalaciones
+frame_actual = None
+lock = threading.Lock()
 
-```powershell
-python -c "import cv2; print(cv2.__version__)"
 
-python -c "import numpy; print(numpy.__version__)"
+def actualizar_frame():
 
-python -c "import dlib; print(dlib.__version__)"
+    global frame_actual
 
-python -c "import face_recognition; print('OK')"
+    while True:
 
-python -c "import psycopg2; print('OK')"
-```
+        ret, frame = cap.read()
 
----
+        if ret:
 
-## Instalación completa en un solo bloque
+            with lock:
 
-```powershell
-python -m pip install --upgrade pip
+                frame_actual = frame
 
-pip install setuptools==80.9.0
 
-pip install numpy==1.26.4
+hilo = threading.Thread(
+    target=actualizar_frame,
+    daemon=True
+)
 
-pip install opencv-python==4.9.0.80
+hilo.start()
 
-pip install face-recognition
 
-pip install psycopg2-binary
-```
+# ==================================
+# LOOP PRINCIPAL
+# ==================================
 
-Después instala manualmente:
+contador_frames = 0
 
-```powershell
-python -m pip install dlib-19.24.99-cp312-cp312-win_amd64.whl
-```
+while True:
 
----
+    with lock:
 
-También te recomendaría crear un archivo `requirements.txt` para tu proyecto, de forma que en cualquier PC solo tengas que ejecutar:
+        if frame_actual is None:
 
-```powershell
-pip install -r requirements.txt
-```
+            continue
 
-y se instale todo automáticamente con las mismas versiones.
+        frame = frame_actual.copy()
+
+    contador_frames += 1
+
+    ubicaciones = []
+    encodings = []
+
+    # Procesar 1 de cada 3 frames
+    if contador_frames % 3 == 0:
+
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        ubicaciones = face_recognition.face_locations(rgb)
+
+        encodings = face_recognition.face_encodings(
+            rgb,
+            ubicaciones
+        )
+
+    for (top, right, bottom, left), encoding in zip(
+        ubicaciones,
+        encodings
+    ):
+
+        nombre = "Desconocido"
+
+        coincidencias = face_recognition.compare_faces(
+            caras_conocidas,
+            encoding
+        )
+
+        if True in coincidencias:
+
+            indice = coincidencias.index(True)
+
+            nombre = nombres[indice]
+
+            ahora = datetime.now()
+
+            guardar = False
+
+            if nombre not in ultimas_detecciones:
+
+                guardar = True
+
+            else:
+
+                diferencia = (
+                    ahora -
+                    ultimas_detecciones[nombre]
+                )
+
+                if diferencia > timedelta(
+                    seconds=TIEMPO_REPETICION
+                ):
+
+                    guardar = True
+
+            if guardar:
+
+                try:
+
+                    cursor.execute(
+                        """
+                        SELECT id
+                        FROM personas
+                        WHERE nombre = %s
+                        """,
+                        (nombre,)
+                    )
+
+                    resultado_persona = cursor.fetchone()
+
+                    if resultado_persona is None:
+
+                        print(
+                            "La persona no existe en la tabla personas"
+                        )
+
+                    else:
+
+                        persona_id = resultado_persona[0]
+
+                        cursor.execute(
+                            """
+                            SELECT id
+                            FROM camaras
+                            WHERE nombre = %s
+                            """,
+                            (NOMBRE_CAMARA,)
+                        )
+
+                        resultado_camara = cursor.fetchone()
+
+                        if resultado_camara is None:
+
+                            print(
+                                "La camara no existe en la tabla camaras"
+                            )
+
+                        else:
+
+                            camara_id = resultado_camara[0]
+
+                            cursor.execute(
+                                """
+                                INSERT INTO detecciones
+                                (
+                                    persona_id,
+                                    camara_id,
+                                    fecha_hora
+                                )
+                                VALUES
+                                (
+                                    %s,
+                                    %s,
+                                    %s
+                                )
+                                """,
+                                (
+                                    persona_id,
+                                    camara_id,
+                                    ahora
+                                )
+                            )
+
+                            conn.commit()
+
+                            ultimas_detecciones[nombre] = ahora
+
+                            print(
+                                f"[OK] {nombre} | "
+                                f"{NOMBRE_CAMARA} | "
+                                f"{ahora.strftime('%Y-%m-%d %H:%M:%S')}"
+                            )
+
+                except Exception as e:
+
+                    conn.rollback()
+
+                    print("Error insertando:", e)
+
+        cv2.rectangle(
+            frame,
+            (left, top),
+            (right, bottom),
+            (0, 255, 0),
+            2
+        )
+
+        cv2.putText(
+            frame,
+            nombre,
+            (left, top - 10),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.8,
+            (0, 255, 0),
+            2
+        )
+
+    cv2.imshow(
+        "Reconocimiento Facial",
+        frame
+    )
+
+    if cv2.waitKey(1) == 27:
+
+        break
+
+
+# ==================================
+# CIERRE
+# ==================================
+
+cap.release()
+
+cursor.close()
+
+conn.close()
+
+cv2.destroyAllWindows()
