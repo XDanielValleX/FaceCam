@@ -16,61 +16,91 @@ def cargar_personas():
     )
 
     caras_conocidas = []
+
     nombres = []
 
-    for archivo in os.listdir(ruta_personas):
+    for nombre_persona in os.listdir(ruta_personas):
 
-        ruta_imagen = os.path.join(
+        carpeta_persona = os.path.join(
             ruta_personas,
-            archivo
+            nombre_persona
         )
 
-        try:
+        if not os.path.isdir(carpeta_persona):
 
-            imagen = cv2.imread(ruta_imagen)
+            continue
 
-            if imagen is None:
-                continue
+        for archivo in os.listdir(carpeta_persona):
 
-            imagen = cv2.cvtColor(
-                imagen,
-                cv2.COLOR_BGR2RGB
-            )
-
-            imagen = np.array(
-                imagen,
-                dtype=np.uint8
-            )
-
-            encodings = face_recognition.face_encodings(
-                imagen
-            )
-
-            if len(encodings) == 0:
-                continue
-
-            caras_conocidas.append(
-                encodings[0]
-            )
-
-            nombre = os.path.splitext(
+            ruta_imagen = os.path.join(
+                carpeta_persona,
                 archivo
-            )[0]
-
-            nombres.append(nombre)
-
-            print(nombre, "cargado")
-
-        except Exception as e:
-
-            print(
-                "Error cargando",
-                archivo,
-                e
             )
+
+            try:
+
+                imagen = cv2.imread(
+                    ruta_imagen
+                )
+
+                if imagen is None:
+
+                    continue
+
+                imagen = cv2.cvtColor(
+                    imagen,
+                    cv2.COLOR_BGR2RGB
+                )
+
+                imagen = np.array(
+                    imagen,
+                    dtype=np.uint8
+                )
+
+                encodings = face_recognition.face_encodings(
+                    imagen
+                )
+
+                if len(encodings) == 0:
+
+                    print(
+                        "No se detectó rostro en:",
+                        archivo
+                    )
+
+                    continue
+
+                caras_conocidas.append(
+                    encodings[0]
+                )
+
+                nombres.append(
+                    nombre_persona
+                )
+
+                print(
+                    nombre_persona,
+                    "-",
+                    archivo,
+                    "cargado"
+                )
+
+            except Exception as e:
+
+                print(
+                    "Error cargando",
+                    archivo,
+                    e
+                )
 
     print()
+
     print("Personas cargadas:")
-    print(nombres)
+
+    print(
+        list(
+            set(nombres)
+        )
+    )
 
     return caras_conocidas, nombres
