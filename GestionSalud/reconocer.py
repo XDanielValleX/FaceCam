@@ -46,6 +46,12 @@ ultimas_detecciones = {}
 # CAMARA
 # ==================================
 
+indice_camara = 0
+
+NOMBRE_CAMARA = CAMARAS[indice_camara]["nombre"]
+
+RTSP_URL = CAMARAS[indice_camara]["rtsp"]
+
 cap = abrir_camara(RTSP_URL)
 
 if cap is None:
@@ -55,6 +61,7 @@ if cap is None:
     exit()
 
 print("Camara conectada")
+print("Camara actual:", NOMBRE_CAMARA)
 
 
 # ==================================
@@ -233,9 +240,34 @@ while True:
         frame
     )
 
-    if cv2.waitKey(1) == 27:
+    tecla = cv2.waitKey(1)
+
+    # ESC
+    if tecla == 27:
 
         break
+
+    # Siguiente camara
+    if tecla == ord("n"):
+
+        indice_camara += 1
+
+        if indice_camara >= len(CAMARAS):
+
+            indice_camara = 0
+
+        cap.release()
+
+        NOMBRE_CAMARA = CAMARAS[indice_camara]["nombre"]
+
+        RTSP_URL = CAMARAS[indice_camara]["rtsp"]
+
+        cap = abrir_camara(RTSP_URL)
+
+        print()
+        print("=================================")
+        print("Cambiando a:", NOMBRE_CAMARA)
+        print("=================================")
 
 
 # ==================================
