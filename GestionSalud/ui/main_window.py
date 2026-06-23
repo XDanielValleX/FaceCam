@@ -1,9 +1,15 @@
-from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QStackedWidget, QLabel
+from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QStackedWidget
 from PySide6.QtCore import Qt
+
+# Importaciones de la barra lateral y vistas existentes
 from ui.sidebar import Sidebar
+from ui.camara_view import CameraView         # Visualizador de Video en Vivo
 from ui.persons_window import PersonsWindow   # CRUD de Personas
-from ui.camaras_window import CamerasWindow   # type: ignore # CRUD de Cámaras/NVRs
-from ui.camara_view import CameraView         # type: ignore # Visualizador de Video en Vivo (NUEVO)
+from ui.camaras_window import CamerasWindow   # CRUD de Cámaras/NVRs
+
+# --- NUEVAS IMPORTACIONES RE REALES ---
+from ui.dashboard_window import DashboardWindow
+from ui.detections_window import DetectionsWindow  # (Asegúrate de que el archivo se llame detections_window.py)
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -36,21 +42,23 @@ class MainWindow(QMainWindow):
         self.configurar_vistas()
 
     def configurar_vistas(self):
-        # Índice 0: Dashboard (Panel Principal)
-        self.stacked_widget.addWidget(QLabel("Panel Principal (Dashboard) - Próximamente"))
+        # Índice 0: Dashboard (Panel Principal Real)
+        self.vista_dashboard = DashboardWindow()
+        self.stacked_widget.addWidget(self.vista_dashboard)
 
-        # Índice 1: Monitoreo (Visualizador de Cámaras en Vivo con Hilos y OpenCV)
+        # Índice 1: Monitoreo (Visualizador de Cámaras en Vivo)
         self.vista_monitoreo = CameraView()
         self.stacked_widget.addWidget(self.vista_monitoreo)
 
-        # Índice 2: Gestión de Personas (CRUD con guardado de fotos)
+        # Índice 2: Gestión de Personas (CRUD con fotos)
         self.vista_personas = PersonsWindow()
         self.stacked_widget.addWidget(self.vista_personas)
 
-        # Índice 3: Historial (Registro de accesos detectados)
-        self.stacked_widget.addWidget(QLabel("Historial de Detecciones - Próximamente"))
+        # Índice 3: Historial (Registro de accesos detectados Real)
+        self.vista_detecciones = DetectionsWindow()
+        self.stacked_widget.addWidget(self.vista_detecciones)
 
-        # Índice 4: Configuración del Sistema (CRUD dinámico de Cámaras y NVRs)
+        # Índice 4: Configuración del Sistema (CRUD de Cámaras y NVRs)
         self.vista_cameras = CamerasWindow()
         self.stacked_widget.addWidget(self.vista_cameras)
 

@@ -3,8 +3,12 @@ import numpy as np
 import face_recognition
 import threading
 from datetime import datetime, timedelta
+from camaras.sdk_dahua import obtener_total_canales
 
-from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QComboBox, QPushButton
+from PySide6.QtWidgets import (
+    QWidget, QLabel, QVBoxLayout, QHBoxLayout,
+    QComboBox, QPushButton
+)
 from PySide6.QtCore import QThread, Signal, Qt
 from PySide6.QtGui import QImage, QPixmap
 
@@ -154,7 +158,15 @@ class CameraView(QWidget):
         
         self.combo_camaras = QComboBox()
         self.combo_camaras.setStyleSheet("padding: 6px; font-size: 14px; background-color: #1e293b; color: white; border-radius: 4px;")
+        self.combo_camaras.currentIndexChanged.connect(self.actualizar_visibilidad_canales)
         
+        # Selector de canal dinámico para NVR
+        self.lbl_canal = QLabel("Canal:")
+        self.lbl_canal.setVisible(False)
+        self.combo_canales = QComboBox()
+        self.combo_canales.setStyleSheet("padding: 6px; font-size: 14px; background-color: #1e293b; color: white; border-radius: 4px;")
+        self.combo_canales.setVisible(False)
+
         self.btn_conectar = QPushButton("▶️ Conectar")
         self.btn_conectar.setStyleSheet("background-color: #22c55e; color: white; padding: 8px 15px; font-weight: bold; border-radius: 4px;")
         self.btn_conectar.clicked.connect(self.iniciar_video)
@@ -166,6 +178,8 @@ class CameraView(QWidget):
 
         control_layout.addWidget(QLabel("Seleccionar origen:"))
         control_layout.addWidget(self.combo_camaras, stretch=1)
+        control_layout.addWidget(self.lbl_canal)
+        control_layout.addWidget(self.combo_canales)
         control_layout.addWidget(self.btn_conectar)
         control_layout.addWidget(self.btn_desconectar)
         layout.addLayout(control_layout)
@@ -186,11 +200,11 @@ class CameraView(QWidget):
         self.actualizar_lista_camaras()
 
     def actualizar_lista_camaras(self):
-        """Consulta la base de datos y carga las cámaras con sus parámetros RTSP creados dinámicamente."""
+        """Consulta la base de datos y guarda los datos crudos en el ComboBox."""
         self.combo_camaras.clear()
         
         # Opción por si quieres hacer pruebas con tu webcam física sin RTSP
-        self.combo_camaras.addItem("📸 Cámara Web Integrada (Local)", {"id": 0, "nombre": "Webcam Local", "url": 0})
+        self.combo_camaras.addItem("📸 Cámara Web Integrada (Local)", {"id": 0, "nombre": "Webcam Local", "tipo": "WEB", "url": 0})
 
         try:
             conn = conectar()
@@ -200,39 +214,96 @@ class CameraView(QWidget):
             
             for c in camaras:
                 cid, nombre, tipo, ip, puerto, usuario, password, canal = c
-                puerto = puerto if puerto else 554
-                
-                # Construcción inteligente de la URL RTSP basada en tus nuevas columnas SQL
-                if tipo == "NVR":
-                    url = f"rtsp://{usuario}:{password}@{ip}:{puerto}/cam/realmonitor?channel={canal}&subtype=1"
-                else:  # Cámara IP independiente
-                    # Si el campo IP ya contiene un string rtsp:// completo, lo usa; si no, arma la estructura estándar
-                    if str(ip).startswith("rtsp://"):
-                        url = ip
-                    else:
-                        url = f"rtsp://{usuario}:{password}@{ip}:{puerto}/cam/realmonitor?channel=1&subtype=0"
                 
                 # Guardamos un diccionario con toda la data dentro del item del ComboBox
-                self.combo_camaras.addItem(f"{nombre} ({tipo})", {"id": cid, "nombre": nombre, "url": url})
+                data_dict = {
+                    "id": cid,
+                    "nombre": nombre,
+                    "tipo": tipo,
+                    "ip": ip,
+                    "puerto": puerto if puerto else 80, # Por defecto al puerto web estándar
+                    "usuario": usuario,
+                    "password": password,
+                    "canal_defecto": canal
+                }
+                
+                self.combo_camaras.addItem(f"{nombre} ({tipo})", data_dict)
                 
             cursor.close()
             conn.close()
+            
+            # Forzamos la actualización visual de la caja de canales
+            self.actualizar_visibilidad_canales()
+            
         except Exception as e:
             print("[ERROR] No se pudieron cargar las cámaras en el ComboBox:", e)
 
-    def iniciar_video(self):
-        """Obtiene la cámara seleccionada e inicia el hilo asíncrono de reconocimiento facial."""
+    def actualizar_visibilidad_canales(self):
+        """Muestra u oculta la caja selectora y lee del SDK cuántos canales reales tiene el NVR."""
         data = self.combo_camaras.currentData()
         if not data:
             return
 
+        if data.get("tipo") == "NVR":
+            self.lbl_canal.setVisible(True)
+            self.combo_canales.setVisible(True)
+            
+            # 1. Limpiamos canales anteriores del ComboBox
+            self.combo_canales.clear()
+            
+            # 2. Consultamos al NVR pasando el puerto dinámico de la base de datos (Ej: 84, 80, 8080)
+            total_canales = obtener_total_canales(
+                ip=data.get("ip"),
+                usuario=data.get("usuario"),
+                password=data.get("password"),
+                puerto=data.get("puerto") # <--- Totalmente dinámico desde la BD
+            )
+            
+            # 3. Llenamos el ComboBox dinámicamente según la respuesta
+            if total_canales > 0:
+                print(f"[SDK] El NVR {data['nombre']} reporta {total_canales} canales.")
+                for i in range(1, total_canales + 1):
+                    self.combo_canales.addItem(str(i))
+            else:
+                # Fallback: Si el equipo está apagado o falla la red, ponemos 16 por defecto
+                print(f"[WARNING] No se pudo conectar a la API del NVR {data['nombre']}. Cargando canales por defecto.")
+                self.combo_canales.addItems([str(i) for i in range(1, 17)])
+            
+            # Si tiene un canal configurado por defecto en la BD, lo seleccionamos
+            if data.get("canal_defecto"):
+                self.combo_canales.setCurrentText(str(data["canal_defecto"]))
+        else:
+            self.lbl_canal.setVisible(False)
+            self.combo_canales.setVisible(False)
+
+    def iniciar_video(self):
+        """Obtiene la cámara seleccionada, construye su URL dinámica e inicia el hilo de IA."""
+        data = self.combo_camaras.currentData()
+        if not data:
+            return
+
+        # 1. CONSTRUCCIÓN DINÁMICA DE LA URL RTSP
+        if data.get("tipo") == "WEB":
+            url = data["url"] # webcam local
+        elif data.get("tipo") == "NVR":
+            canal_seleccionado = self.combo_canales.currentText()
+            # CAMBIO ESTRATÉGICO: Forzamos el puerto de video RTSP estándar a 554 para los NVRs
+            url = f"rtsp://{data['usuario']}:{data['password']}@{data['ip']}:554/cam/realmonitor?channel={canal_seleccionado}&subtype=1"
+        else: # Cámara IP independiente
+            if str(data["ip"]).startswith("rtsp://"):
+                url = data["ip"]
+            else:
+                url = f"rtsp://{data['usuario']}:{data['password']}@{data['ip']}:{data['puerto']}/cam/realmonitor?channel=1&subtype=0"
+
+        # 2. BLOQUEO DE LA INTERFAZ MIENTRAS TRANSMITE
         self.btn_conectar.setEnabled(False)
         self.btn_desconectar.setEnabled(True)
         self.combo_camaras.setEnabled(False)
-        self.image_label.setText("Iniciando transmisión de video e IA...")
+        self.combo_canales.setEnabled(False)
+        self.image_label.setText(f"Iniciando transmisión de video e IA en {data['nombre']}...")
 
-        # Instanciar el hilo con los parámetros dinámicos de la cámara seleccionada
-        self.thread = VideoThread(camara_id=data["id"], nombre_camara=data["nombre"], rtsp_url=data["url"])
+        # 3. INSTANCIACIÓN DEL HILO
+        self.thread = VideoThread(camara_id=data["id"], nombre_camara=data["nombre"], rtsp_url=url)
         self.thread.frame_signal.connect(self.actualizar_imagen)
         self.thread.start()
 
@@ -245,6 +316,7 @@ class CameraView(QWidget):
         self.btn_conectar.setEnabled(True)
         self.btn_desconectar.setEnabled(False)
         self.combo_camaras.setEnabled(True)
+        self.combo_canales.setEnabled(True)
         self.image_label.clear()
         self.image_label.setText("Transmisión finalizada. Seleccione otra cámara.")
 
