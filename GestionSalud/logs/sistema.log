@@ -14,3 +14,5 @@
 2026-06-22 14:15:43,480 - INFO - Cristian Jimenez detectado en Consultorio_1
 2026-06-22 14:16:07,218 - INFO - Daniel Valle detectado en Consultorio_1
 2026-06-22 14:28:49,826 - INFO - Daniel Valle detectado en Consultorio_1
+2026-06-23 08:53:39,012 - ERROR - No se pudo abrir la cámara Consultorio_1 en rtsp://None:None@None:554/cam/realmonitor?channel=1&subtype=0
+2026-06-23 08:53:53,287 - ERROR - No se pudo abrir la cámara Webcam Local en 0
