@@ -28,7 +28,7 @@ class CameraFormDialog(QDialog):
         
         self.spin_puerto = QSpinBox()
         self.spin_puerto.setRange(1, 65535)
-        self.spin_puerto.setValue(554) # Puerto RTSP por defecto
+        self.spin_puerto.setValue(80) # Puerto inicial estándar (Cámaras IP suelen usar 554, NVRs usan 80/84 para la API)
         
         self.input_usuario = QLineEdit()
         self.input_password = QLineEdit()
@@ -42,7 +42,7 @@ class CameraFormDialog(QDialog):
         layout.addRow("Ubicación:", self.input_ubicacion)
         layout.addRow("Tipo de Dispositivo:", self.combo_tipo)
         layout.addRow("Dirección IP:", self.input_ip)
-        layout.addRow("Puerto RTSP:", self.spin_puerto)
+        layout.addRow("Puerto (Web / RTSP):", self.spin_puerto)
         layout.addRow("Usuario:", self.input_usuario)
         layout.addRow("Contraseña:", self.input_password)
         layout.addRow("Canal (NVR):", self.spin_canal)
@@ -68,7 +68,7 @@ class CameraFormDialog(QDialog):
             self.input_ubicacion.setText(self.datos[2])
             self.combo_tipo.setCurrentText(self.datos[3])
             self.input_ip.setText(self.datos[4])
-            self.spin_puerto.setValue(int(self.datos[5]) if self.datos[5] else 554)
+            self.spin_puerto.setValue(int(self.datos[5]) if self.datos[5] else 80)
             self.input_usuario.setText(self.datos[6])
             self.input_password.setText(self.datos[7])
             self.spin_canal.setValue(int(self.datos[8]) if self.datos[8] else 1)

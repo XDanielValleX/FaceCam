@@ -16,3 +16,25 @@
 2026-06-22 14:28:49,826 - INFO - Daniel Valle detectado en Consultorio_1
 2026-06-23 08:53:39,012 - ERROR - No se pudo abrir la cámara Consultorio_1 en rtsp://None:None@None:554/cam/realmonitor?channel=1&subtype=0
 2026-06-23 08:53:53,287 - ERROR - No se pudo abrir la cámara Webcam Local en 0
+2026-06-23 11:01:40,833 - ERROR - No se pudo abrir la cámara camara1 en rtsp://admin:123456789a@192.168.27.57:37777/cam/realmonitor?channel=1&subtype=0
+2026-06-23 11:02:54,801 - INFO - Daniel Valle detectado en camara1
+2026-06-23 11:03:13,768 - INFO - Cristian Jimenez detectado en camara1
+2026-06-23 11:03:25,600 - INFO - Daniel Valle detectado en camara1
+2026-06-23 11:03:45,489 - INFO - Cristian Jimenez detectado en camara1
+2026-06-23 11:04:00,960 - INFO - Daniel Valle detectado en camara1
+2026-06-23 11:04:24,681 - INFO - Cristian Jimenez detectado en camara1
+2026-06-23 11:04:32,205 - INFO - Daniel Valle detectado en camara1
+2026-06-23 11:04:59,739 - INFO - Cristian Jimenez detectado en camara1
+2026-06-23 11:05:04,312 - INFO - Daniel Valle detectado en camara1
+2026-06-23 11:05:30,987 - INFO - Cristian Jimenez detectado en camara1
+2026-06-23 11:05:34,467 - INFO - Daniel Valle detectado en camara1
+2026-06-23 11:06:04,765 - INFO - Cristian Jimenez detectado en camara1
+2026-06-23 11:06:04,765 - INFO - Daniel Valle detectado en camara1
+2026-06-23 11:15:19,928 - ERROR - No se pudo abrir la cámara nvr1 en rtsp://admin:ctg12345@192.168.27.105:80/cam/realmonitor?channel=5&subtype=1
+2026-06-23 11:53:39,698 - ERROR - No se pudo abrir la cámara nvr2 en rtsp://admin:ctg12345@192.168.27.103:554/cam/realmonitor?channel=30&subtype=1
+2026-06-23 11:54:21,878 - ERROR - No se pudo abrir la cámara nvr2 en rtsp://admin:ctg12345@192.168.27.103:554/cam/realmonitor?channel=29&subtype=1
+2026-06-23 13:51:23,613 - ERROR - No se pudo abrir la cámara nvr2 en rtsp://admin:ctg12345@192.168.27.103:554/cam/realmonitor?channel=25&subtype=1
+2026-06-23 13:54:22,598 - ERROR - No se pudo abrir la cámara nvr2 en rtsp://admin:ctg12345@192.168.27.103:554/cam/realmonitor?channel=24&subtype=1
+2026-06-23 13:54:59,616 - ERROR - No se pudo abrir la cámara nvr2 en rtsp://admin:ctg12345@192.168.27.103:554/cam/realmonitor?channel=23&subtype=1
+2026-06-23 14:43:39,840 - INFO - Daniel Valle detectado en nvr1
+2026-06-23 14:54:57,513 - INFO - Cristian Jimenez detectado en nvr1
